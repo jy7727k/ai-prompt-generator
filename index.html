@@ -282,24 +282,52 @@
       }
 
       try {
-        const imageBlob = await fetch(els.previewImage.src).then(r => r.blob());
-        if (navigator.clipboard && window.ClipboardItem && window.isSecureContext) {
-          const safePrompt = prompt.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-          const htmlPayload = "<div><p style=\"white-space:pre-wrap;margin:0 0 8px 0;\">" + safePrompt + "</p><img src=\"" + els.previewImage.src + "\" alt=\"reference\" /></div>";
-          await navigator.clipboard.write([
-            new ClipboardItem({
-              "text/plain": new Blob([prompt], { type: "text/plain" }),
-              "text/html": new Blob([htmlPayload], { type: "text/html" }),
-              [imageBlob.type || "image/png"]: imageBlob
-            })
-          ]);
-          setStatus("프롬프트+사진 복사 완료. 이미지 붙여넣기를 지원하는 입력창에서 Ctrl+V 해보세요.", "success");
-          return;
+        if (!(navigator.clipboard && window.ClipboardItem && window.isSecureContext)) {
+          throw new Error("Clipboard API not available");
         }
-      } catch (_) {}
 
-      await copyPromptOnly();
-      setStatus("브라우저/대상 입력창 제한으로 사진 동시 복사가 안 되어 프롬프트만 복사했습니다.", "warn");
+        // 크롬 호환성을 높이기 위해 이미지를 표준 PNG Blob으로 변환
+        const bitmap = await createImageBitmap(selectedImageFile);
+        const canvas = document.createElement("canvas");
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(bitmap, 0, 0);
+        const pngBlob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+        if (!pngBlob) throw new Error("Failed to encode image");
+
+        const dataUrl = await new Promise((resolve) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result);
+          r.readAsDataURL(pngBlob);
+        });
+
+        const safePrompt = prompt
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;");
+
+        const htmlPayload =
+          "<div><p style=\"white-space:pre-wrap;margin:0 0 8px 0;\">" +
+          safePrompt +
+          "</p><img src=\"" +
+          dataUrl +
+          "\" alt=\"reference\" /></div>";
+
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/plain": new Blob([prompt], { type: "text/plain" }),
+            "text/html": new Blob([htmlPayload], { type: "text/html" }),
+            "image/png": pngBlob
+          })
+        ]);
+
+        setStatus("프롬프트+사진 복사 완료. 이미지 붙여넣기를 지원하는 입력창에서 Ctrl+V 해보세요.", "success");
+        return;
+      } catch (e) {
+        await copyPromptOnly();
+        setStatus("복사 대상 입력창 정책 때문에 이미지가 막힐 수 있어 프롬프트만 복사되었습니다.", "warn");
+      }
     }
 
     function resetForm() {
