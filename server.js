@@ -1,90 +1,107 @@
 import express from "express";
 import multer from "multer";
-import OpenAI from "openai";
 import "dotenv/config";
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 const PORT = process.env.PORT || 3000;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+const GOOGLE_MODEL = process.env.GOOGLE_IMAGE_MODEL || "gemini-2.0-flash-preview-image-generation";
 
 app.use(express.static("."));
 
-function findImageGenerationResult(response) {
-  if (!response || !Array.isArray(response.output)) return null;
+app.options("/api/generate-image", (_req, res) => {
+  res.sendStatus(204);
+});
 
-  for (const item of response.output) {
-    if (item.type === "image_generation_call" && item.result) {
-      return item.result;
+function extractImageBase64(geminiResponse) {
+  const candidates = geminiResponse?.candidates;
+  if (!Array.isArray(candidates)) return null;
+
+  for (const candidate of candidates) {
+    const parts = candidate?.content?.parts;
+    if (!Array.isArray(parts)) continue;
+
+    for (const part of parts) {
+      const data = part?.inlineData?.data;
+      const mimeType = part?.inlineData?.mimeType;
+      if (typeof data === "string" && data.length > 0) {
+        return { data, mimeType: mimeType || "image/png" };
+      }
     }
   }
 
   return null;
 }
 
-app.options("/api/generate-image", (_req, res) => {
-  res.sendStatus(204);
-});
-
 app.post("/api/generate-image", upload.single("image"), async (req, res) => {
   try {
-    if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.includes("여기에_")) {
+    if (!GOOGLE_API_KEY) {
       return res.status(500).json({
-        error: ".env 파일에 OPENAI_API_KEY가 설정되지 않았습니다. .env.example을 .env로 복사한 뒤 새 API 키를 넣으세요.",
+        error: "GOOGLE_API_KEY is not set. Add it in Render environment variables.",
       });
     }
 
     if (!req.file) {
-      return res.status(400).json({ error: "이미지 파일이 없습니다." });
+      return res.status(400).json({ error: "Image file is missing." });
     }
 
     const prompt = req.body.prompt || "Create a cute emoji sticker image.";
-    const base64Image = req.file.buffer.toString("base64");
-    const imageDataUrl = `data:${req.file.mimetype};base64,${base64Image}`;
+    const imageBase64 = req.file.buffer.toString("base64");
 
-    const response = await openai.responses.create({
-      model: "gpt-4.1",
-      input: [
+    const payload = {
+      contents: [
         {
           role: "user",
-          content: [
+          parts: [
+            { text: prompt },
             {
-              type: "input_text",
-              text:
-                "Use the uploaded image as the visual identity reference. Create the requested image based on this prompt: " +
-                prompt,
-            },
-            {
-              type: "input_image",
-              image_url: imageDataUrl,
+              inlineData: {
+                mimeType: req.file.mimetype || "image/png",
+                data: imageBase64,
+              },
             },
           ],
         },
       ],
-      tools: [{ type: "image_generation" }],
+      generationConfig: {
+        responseModalities: ["TEXT", "IMAGE"],
+      },
+    };
+
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GOOGLE_MODEL}:generateContent?key=${GOOGLE_API_KEY}`;
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
 
-    const imageBase64 = findImageGenerationResult(response);
+    const data = await response.json();
 
-    if (!imageBase64) {
+    if (!response.ok) {
+      const message = data?.error?.message || `Google API error (HTTP ${response.status})`;
+      return res.status(response.status).json({ error: message });
+    }
+
+    const generated = extractImageBase64(data);
+    if (!generated) {
       return res.status(500).json({
-        error: "이미지 생성 결과가 없습니다. 모델 또는 계정의 이미지 생성 권한을 확인하세요.",
+        error: "No image data returned from Google model. Check model access and quota.",
       });
     }
 
-    return res.json({ imageBase64 });
+    return res.json({ imageBase64: generated.data, mimeType: generated.mimeType });
   } catch (error) {
-    console.error("[image generation error]", error);
+    console.error("[google image generation error]", error);
     return res.status(500).json({
-      error: error.message || "이미지 생성 실패",
+      error: error?.message || "Image generation failed",
     });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`서버 실행 중: http://localhost:${PORT}`);
-  console.log("API 키는 .env 파일의 OPENAI_API_KEY에서만 읽습니다.");
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log("Image generation provider: Google Gemini");
 });
