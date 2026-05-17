@@ -233,8 +233,13 @@ async function copyPromptAndImage(){
     const safePrompt=prompt.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
     const htmlPayload="<div><p style=\"white-space:pre-wrap;margin:0 0 8px 0;\">"+safePrompt+"</p><img src=\""+dataUrl+"\" alt=\"reference\" /></div>";
     await navigator.clipboard.write([new ClipboardItem({"text/plain":new Blob([prompt],{type:"text/plain"}),"text/html":new Blob([htmlPayload],{type:"text/html"}),"image/png":pngBlob})]);
+    // Gemini 호환성을 높이기 위한 2단계 보강: 복합 복사 직후 텍스트를 다시 복사
+    // 일부 입력창은 이미지 타입만 우선 소비하므로 텍스트를 마지막에 한 번 더 보강한다.
+    setTimeout(async ()=>{
+      try { await copyText(prompt); } catch {}
+    }, 280);
     els.geminiHelp.style.display="block";
-    setStatus("복사 완료: 프롬프트+이미지를 클립보드에 저장했습니다. Gemini에서 텍스트가 안 붙으면 아래 [텍스트 다시 복사]를 눌러주세요.","success");
+    setStatus("복사 완료: 이미지+프롬프트를 함께 복사했고, Gemini 호환용으로 텍스트도 자동 보강했습니다.","success");
   }catch{
     els.geminiHelp.style.display="block";
     await copyPromptOnly();
@@ -246,8 +251,8 @@ function resetForm(){
   els.subject.value=""; els.renderMode.selectedIndex=0; els.style.selectedIndex=0; els.palette.selectedIndex=0; els.mood.selectedIndex=0; els.composition.selectedIndex=0; els.emotion.selectedIndex=0; els.quality.selectedIndex=0;
   els.imageInput.value=""; selectedImageFile=null; els.previewImage.removeAttribute("src"); els.previewWrap.style.display="none";
   document.querySelectorAll(".example").forEach((n)=>n.classList.remove("selected"));
-  document.querySelectorAll(".example").forEach((n)=>n.classList.remove("selected"));
   if(els.geminiHelp) els.geminiHelp.style.display="none";
+  if(els.exampleHint) els.exampleHint.textContent = "예시를 선택하면 핵심 설명이 여기에 표시됩니다.";
   els.promptOutput.textContent="예시를 먼저 선택하고, 하단 버튼에서 [프롬프트 만들기]를 누르세요."; setStatus("");
 }
 
@@ -282,6 +287,14 @@ function toggleActionButton(btn){
   btn.classList.toggle("clicked");
 }
 
+function clearActionButtons(exceptBtn = null){
+  const actionButtons = [els.btnGenerate, els.btnCopyText, els.btnCopyBoth, els.btnCopyTextAgain, els.btnReset].filter(Boolean);
+  actionButtons.forEach((b)=>{
+    if(exceptBtn && b===exceptBtn) return;
+    b.classList.remove("clicked");
+  });
+}
+
 function runToggleAction(btn, onRun, cancelMessage, startMessage){
   if(!btn) return;
   const isActive = btn.classList.contains("clicked");
@@ -290,6 +303,7 @@ function runToggleAction(btn, onRun, cancelMessage, startMessage){
     if(cancelMessage) setStatus(cancelMessage,"warn");
     return;
   }
+  clearActionButtons(btn);
   btn.classList.add("clicked");
   if(startMessage) setStatus(startMessage,"success");
   onRun();
