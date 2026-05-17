@@ -14,10 +14,14 @@
     .preview-wrap{display:none;margin-top:10px}.preview-wrap img{width:100%;max-height:260px;object-fit:contain;border:1px solid #ddd6fe;border-radius:12px;background:#fff;padding:6px}
     .output{min-height:320px;background:#111827;color:#f9fafb;border-radius:14px;padding:16px;white-space:pre-wrap;line-height:1.7;font-size:14px;user-select:text}
     .status{margin-top:10px;min-height:24px;font-size:14px;font-weight:700;white-space:pre-wrap}.status.success{color:#047857}.status.warn{color:#92400e}.status.error{color:#b91c1c}
-    .examples{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}.example{border:1px solid #e9d5ff;border-radius:12px;padding:11px;background:#faf5ff;cursor:pointer}.example:hover{background:#f3e8ff}
-    .example strong{display:block;margin-bottom:4px;color:#581c87;font-size:14px}.example span{font-size:12px;color:#4b5563}
+    .examples{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:8px}
+    .example{border:1px solid #e9d5ff;border-radius:999px;padding:10px 12px;background:#faf5ff;cursor:pointer;min-height:42px;display:flex;align-items:center;justify-content:center;text-align:center}
+    .example:hover{background:#f3e8ff}.example.selected{background:#ede9fe;border-color:#7c3aed;box-shadow:0 0 0 2px rgba(124,58,237,.2) inset}
+    .example strong{display:block;margin:0;color:#581c87;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+    .example span{display:none}
+    .example-hint{margin-top:10px;border:1px solid #ddd6fe;background:#f8f7ff;color:#4b5563;border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.45}
     .actions-wrap{margin-top:16px}.buttons{display:flex;flex-wrap:wrap;gap:10px}button{border:0;border-radius:999px;padding:12px 18px;font-size:15px;font-weight:800;cursor:pointer}
-    .primary{background:#7c3aed;color:#fff}.secondary{background:#f3e8ff;color:#5b21b6}.danger{background:#fee2e2;color:#991b1b}.notice{margin-top:14px;border:1px solid #fde68a;border-radius:12px;background:#fffbeb;color:#78350f;padding:10px 12px;font-size:13px;line-height:1.55}
+    .primary{background:#7c3aed;color:#fff}.secondary{background:#f3e8ff;color:#5b21b6}.danger{background:#fee2e2;color:#991b1b}.clicked{background:#4c1d95!important;color:#fff!important}.notice{margin-top:14px;border:1px solid #fde68a;border-radius:12px;background:#fffbeb;color:#78350f;padding:10px 12px;font-size:13px;line-height:1.55}
     @media (max-width:900px){.grid,.row,.examples{grid-template-columns:1fr}.hero h1{font-size:30px}}
   </style>
 </head>
@@ -112,6 +116,7 @@
         <div class="example" data-example="beforeAfter"><strong>before / after 변환형</strong><span>현실→애니, 학생→미래직업, 어린시절→현재</span></div>
         <div class="example" data-example="fullBodyProfile"><strong>전신 프로필</strong><span>스튜디오 전신 인물 프로필</span></div>
       </div>
+      <div id="exampleHint" class="example-hint">예시를 선택하면 핵심 설명이 여기에 표시됩니다.</div>
 
       <h2 style="margin-top:18px;">3. 완성된 프롬프트</h2>
       <div id="promptOutput" class="output">예시를 먼저 선택하고, 하단 버튼에서 [프롬프트 만들기]를 누르세요.</div>
@@ -127,6 +132,10 @@
       <button class="secondary" type="button" id="btnCopyBoth">프롬프트+이미지 복사</button>
       <button class="danger" type="button" id="btnReset">초기화</button>
     </div>
+    <div id="geminiHelp" style="display:none;margin-top:10px;">
+      <button class="secondary" type="button" id="btnCopyTextAgain">텍스트 다시 복사</button>
+      <div style="font-size:12px;color:#6b7280;margin-top:6px;">Gemini에서 이미지만 붙는 경우, 이 버튼으로 텍스트를 다시 복사해 한 번 더 붙여넣어 주세요.</div>
+    </div>
   </section>
 </div>
 
@@ -135,7 +144,7 @@ const els = {
   imageInput: document.getElementById("imageInput"), previewWrap: document.getElementById("previewWrap"), previewImage: document.getElementById("previewImage"),
   subject: document.getElementById("subject"), renderMode: document.getElementById("renderMode"), style: document.getElementById("style"), palette: document.getElementById("palette"), mood: document.getElementById("mood"),
   composition: document.getElementById("composition"), emotion: document.getElementById("emotion"), quality: document.getElementById("quality"), promptOutput: document.getElementById("promptOutput"), status: document.getElementById("status"),
-  btnGenerate: document.getElementById("btnGenerate"), btnCopyText: document.getElementById("btnCopyText"), btnCopyBoth: document.getElementById("btnCopyBoth"), btnReset: document.getElementById("btnReset")
+  btnGenerate: document.getElementById("btnGenerate"), btnCopyText: document.getElementById("btnCopyText"), btnCopyBoth: document.getElementById("btnCopyBoth"), btnReset: document.getElementById("btnReset"), btnCopyTextAgain: document.getElementById("btnCopyTextAgain"), geminiHelp: document.getElementById("geminiHelp"), exampleHint: document.getElementById("exampleHint")
 };
 let selectedImageFile = null;
 
@@ -211,7 +220,7 @@ async function copyText(text){
   const t=document.createElement("textarea"); t.value=text; t.style.position="fixed"; t.style.left="-9999px"; document.body.appendChild(t); t.select(); const ok=document.execCommand("copy"); document.body.removeChild(t); return ok;
 }
 
-async function copyPromptOnly(){ const prompt=generatePrompt(); await copyText(prompt); setStatus("프롬프트를 복사했습니다.","success"); }
+async function copyPromptOnly(){ const prompt=generatePrompt(); await copyText(prompt); setStatus("프롬프트 복사 완료", "success"); }
 
 async function copyPromptAndImage(){
   const prompt=generatePrompt();
@@ -224,17 +233,32 @@ async function copyPromptAndImage(){
     const safePrompt=prompt.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
     const htmlPayload="<div><p style=\"white-space:pre-wrap;margin:0 0 8px 0;\">"+safePrompt+"</p><img src=\""+dataUrl+"\" alt=\"reference\" /></div>";
     await navigator.clipboard.write([new ClipboardItem({"text/plain":new Blob([prompt],{type:"text/plain"}),"text/html":new Blob([htmlPayload],{type:"text/html"}),"image/png":pngBlob})]);
-    setStatus("프롬프트+사진 복사 완료. 이미지 붙여넣기를 지원하는 입력창에서 Ctrl+V 해보세요.","success");
-  }catch{ await copyPromptOnly(); setStatus("브라우저/대상 입력창 제한으로 사진 동시 복사가 안 되어 프롬프트만 복사했습니다.","warn"); }
+    els.geminiHelp.style.display="block";
+    setStatus("복사 완료: 프롬프트+이미지를 클립보드에 저장했습니다. Gemini에서 텍스트가 안 붙으면 아래 [텍스트 다시 복사]를 눌러주세요.","success");
+  }catch{
+    els.geminiHelp.style.display="block";
+    await copyPromptOnly();
+    setStatus("복사 완료: 현재 환경 제한으로 이미지+텍스트 동시 붙여넣기가 불안정할 수 있습니다. 아래 [텍스트 다시 복사]를 눌러 텍스트를 따로 붙여넣어 주세요.","warn");
+  }
 }
 
 function resetForm(){
   els.subject.value=""; els.renderMode.selectedIndex=0; els.style.selectedIndex=0; els.palette.selectedIndex=0; els.mood.selectedIndex=0; els.composition.selectedIndex=0; els.emotion.selectedIndex=0; els.quality.selectedIndex=0;
   els.imageInput.value=""; selectedImageFile=null; els.previewImage.removeAttribute("src"); els.previewWrap.style.display="none";
+  document.querySelectorAll(".example").forEach((n)=>n.classList.remove("selected"));
+  document.querySelectorAll(".example").forEach((n)=>n.classList.remove("selected"));
+  if(els.geminiHelp) els.geminiHelp.style.display="none";
   els.promptOutput.textContent="예시를 먼저 선택하고, 하단 버튼에서 [프롬프트 만들기]를 누르세요."; setStatus("");
 }
 
 function loadExample(type){
+  document.querySelectorAll(".example").forEach((n)=>n.classList.remove("selected"));
+  const active = document.querySelector(`.example[data-example="${type}"]`);
+  if(active) active.classList.add("selected");
+  if(active && els.exampleHint){
+    const hintText = active.querySelector("span")?.textContent?.trim() || "";
+    els.exampleHint.textContent = hintText || "예시 설명이 없습니다.";
+  }
   const map = {
     realPhoto16: {subject:"내 사진 기반 실사 한국어 문구 스티커 16종", renderMode:"real", style:"photo-realistic studio portrait, natural skin texture, realistic facial detail", palette:"natural skin tone, neutral white balance", mood:"natural and friendly", composition:2, emotion:"happy", quality:"studio lighting, high resolution, clean white background"},
     toyPackage: {subject:"큰 머리 작은 몸 블리스터 장난감 패키지", renderMode:"animation", style:"miniature collectible figurine package, blister toy packaging, oversized head, small body", palette:"vivid trendy palette", mood:"playful and funny", composition:0, emotion:"happy", quality:"studio lighting, high resolution, clean white background"},
@@ -253,9 +277,32 @@ function loadExample(type){
   setStatus("예시를 적용했습니다. 하단에서 프롬프트 만들기를 누르세요.","success");
 }
 
+function toggleActionButton(btn){
+  if(!btn) return;
+  btn.classList.toggle("clicked");
+}
+
+function runToggleAction(btn, onRun, cancelMessage, startMessage){
+  if(!btn) return;
+  const isActive = btn.classList.contains("clicked");
+  if (isActive) {
+    btn.classList.remove("clicked");
+    if(cancelMessage) setStatus(cancelMessage,"warn");
+    return;
+  }
+  btn.classList.add("clicked");
+  if(startMessage) setStatus(startMessage,"success");
+  onRun();
+}
+
 els.imageInput.addEventListener("change",(e)=>showImage(e.target.files[0]));
 document.addEventListener("paste",(e)=>{const items=e.clipboardData?.items||[];for(const item of items){if(item.type.startsWith("image/")){showImage(item.getAsFile());e.preventDefault();break;}}});
-els.btnGenerate.addEventListener("click",generatePrompt); els.btnCopyText.addEventListener("click",copyPromptOnly); els.btnCopyBoth.addEventListener("click",copyPromptAndImage); els.btnReset.addEventListener("click",resetForm); els.renderMode.addEventListener("change",generatePrompt);
+els.btnGenerate.addEventListener("click",()=>runToggleAction(els.btnGenerate,()=>generatePrompt(),"프롬프트 만들기를 취소했습니다.","프롬프트를 생성했습니다."));
+els.btnCopyText.addEventListener("click",()=>runToggleAction(els.btnCopyText,()=>copyPromptOnly(),"프롬프트 복사를 취소했습니다.","프롬프트 복사를 실행합니다."));
+els.btnCopyBoth.addEventListener("click",()=>runToggleAction(els.btnCopyBoth,()=>copyPromptAndImage(),"프롬프트+이미지 복사를 취소했습니다.","프롬프트+이미지 복사를 실행합니다."));
+if(els.btnCopyTextAgain){els.btnCopyTextAgain.addEventListener("click",()=>runToggleAction(els.btnCopyTextAgain,()=>copyPromptOnly(),"텍스트 다시 복사를 취소했습니다.","텍스트 다시 복사를 실행합니다."));}
+els.btnReset.addEventListener("click",()=>runToggleAction(els.btnReset,()=>resetForm(),"초기화를 취소했습니다.","초기화를 실행합니다."));
+els.renderMode.addEventListener("change",generatePrompt);
 document.querySelectorAll(".example").forEach((node)=>node.addEventListener("click",()=>loadExample(node.dataset.example)));
 generatePrompt();
 </script>
