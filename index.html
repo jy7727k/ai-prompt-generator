@@ -1,935 +1,263 @@
-<!DOCTYPE html>
+﻿<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI 이미지 프롬프트 생성기</title>
+  <title>이모티콘 프롬프트 생성기</title>
   <style>
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: 'Pretendard', 'Noto Sans KR', Arial, sans-serif;
-      background: linear-gradient(135deg, #fff7ed, #eef2ff, #fdf2f8);
-      color: #222;
-      min-height: 100vh;
-    }
-
-    .container {
-      width: min(1120px, 92%);
-      margin: 0 auto;
-      padding: 48px 0;
-    }
-
-    .hero {
-      text-align: center;
-      margin-bottom: 36px;
-    }
-
-    .hero h1 {
-      font-size: 42px;
-      margin: 0 0 12px;
-      letter-spacing: -1px;
-    }
-
-    .hero p {
-      margin: 0;
-      font-size: 18px;
-      color: #555;
-      line-height: 1.6;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      align-items: start;
-    }
-
-    .card {
-      background: rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.75);
-      border-radius: 28px;
-      box-shadow: 0 20px 50px rgba(91, 72, 120, 0.14);
-      padding: 28px;
-    }
-
-    .card h2 {
-      margin: 0 0 18px;
-      font-size: 24px;
-    }
-
-    .card h3 {
-      margin: 24px 0 12px;
-      font-size: 18px;
-    }
-
-    label {
-      display: block;
-      font-weight: 700;
-      margin: 18px 0 8px;
-      font-size: 15px;
-    }
-
-    input, textarea, select {
-      width: 100%;
-      border: 1px solid #ddd6fe;
-      border-radius: 16px;
-      padding: 13px 14px;
-      font-size: 15px;
-      background: #fff;
-      outline: none;
-    }
-
-    textarea {
-      min-height: 92px;
-      resize: vertical;
-      line-height: 1.5;
-    }
-
-    input:focus, textarea:focus, select:focus {
-      border-color: #8b5cf6;
-      box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.13);
-    }
-
-    .row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-    }
-
-    .buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 22px;
-    }
-
-    button {
-      border: 0;
-      border-radius: 999px;
-      padding: 13px 18px;
-      font-weight: 800;
-      font-size: 15px;
-      cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
-    }
-
-    button:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 20px rgba(0,0,0,0.12);
-    }
-
-    button:disabled {
-      cursor: not-allowed;
-      opacity: 0.5;
-    }
-
-    .primary { background: #7c3aed; color: white; }
-    .secondary { background: #f3e8ff; color: #5b21b6; }
-    .danger { background: #fee2e2; color: #991b1b; }
-    .gray { background: #e5e7eb; color: #374151; }
-
-    .prompt-box {
-      min-height: 280px;
-      background: #111827;
-      color: #f9fafb;
-      border-radius: 22px;
-      padding: 22px;
-      line-height: 1.7;
-      white-space: pre-wrap;
-      word-break: keep-all;
-      font-size: 15px;
-      user-select: text;
-    }
-
-    .status {
-      margin-top: 10px;
-      min-height: 22px;
-      font-weight: 700;
-      color: #6d28d9;
-      font-size: 14px;
-      line-height: 1.55;
-      white-space: pre-wrap;
-    }
-
-    .status.error { color: #b91c1c; }
-    .status.success { color: #047857; }
-    .status.warn { color: #92400e; }
-
-    .example-list {
-      display: grid;
-      gap: 12px;
-      margin-top: 16px;
-    }
-
-    .example {
-      border: 1px solid #e9d5ff;
-      border-radius: 18px;
-      padding: 14px;
-      background: #faf5ff;
-      cursor: pointer;
-      transition: 0.15s;
-    }
-
-    .example:hover {
-      background: #f3e8ff;
-      transform: translateY(-2px);
-    }
-
-    .example strong {
-      display: block;
-      margin-bottom: 5px;
-      color: #581c87;
-    }
-
-    .example span {
-      color: #555;
-      font-size: 14px;
-    }
-
-    .notice {
-      margin-top: 20px;
-      padding: 14px 16px;
-      border-radius: 16px;
-      background: #fffbeb;
-      border: 1px solid #fde68a;
-      color: #78350f;
-      line-height: 1.6;
-      font-size: 14px;
-    }
-
-    .api-box {
-      margin-top: 20px;
-      padding: 16px;
-      border-radius: 20px;
-      background: #f8fafc;
-      border: 1px solid #e5e7eb;
-    }
-
-    .api-box .check-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 10px;
-      font-size: 14px;
-      color: #4b5563;
-    }
-
-    .api-box .check-row input {
-      width: auto;
-    }
-
-    .upload-box {
-      border: 2px dashed #c4b5fd;
-      border-radius: 20px;
-      padding: 18px;
-      background: #faf5ff;
-      text-align: center;
-      color: #5b21b6;
-      line-height: 1.6;
-      cursor: pointer;
-      transition: 0.15s;
-    }
-
-    .upload-box:hover {
-      background: #f3e8ff;
-      transform: translateY(-1px);
-    }
-
-    .upload-box input { display: none; }
-
-    .image-preview-wrap {
-      margin-top: 14px;
-      display: none;
-    }
-
-    .image-preview-wrap img {
-      width: 100%;
-      max-height: 280px;
-      object-fit: contain;
-      border-radius: 18px;
-      border: 1px solid #ddd6fe;
-      background: white;
-      padding: 8px;
-    }
-
-    .image-tip {
-      margin-top: 8px;
-      font-size: 13px;
-      color: #666;
-      line-height: 1.5;
-    }
-
-    .result-wrap {
-      margin-top: 18px;
-      display: none;
-    }
-
-    .result-wrap img {
-      width: 100%;
-      border-radius: 20px;
-      border: 1px solid #ddd6fe;
-      background: white;
-      padding: 8px;
-    }
-
-    .test-box {
-      margin-top: 18px;
-      padding: 14px 16px;
-      border-radius: 16px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      color: #374151;
-      font-size: 13px;
-      line-height: 1.55;
-    }
-
-    .loading {
-      opacity: 0.7;
-      pointer-events: none;
-    }
-
-    .footer {
-      text-align: center;
-      margin-top: 30px;
-      color: #666;
-      font-size: 14px;
-    }
-
-    @media (max-width: 860px) {
-      .grid, .row { grid-template-columns: 1fr; }
-      .hero h1 { font-size: 32px; }
-    }
+    *{box-sizing:border-box} body{margin:0;font-family:"Pretendard","Noto Sans KR",Arial,sans-serif;background:linear-gradient(135deg,#fff7ed,#eef2ff,#fdf2f8);color:#1f2937}
+    .container{width:min(1120px,92%);margin:0 auto;padding:36px 0 48px}.hero{text-align:center;margin-bottom:24px}.hero h1{margin:0 0 10px;font-size:36px}.hero p{margin:0;color:#4b5563;line-height:1.6}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.card{background:rgba(255,255,255,.92);border:1px solid #ede9fe;border-radius:20px;padding:22px;box-shadow:0 16px 30px rgba(76,29,149,.09)}
+    h2{margin:0 0 14px;font-size:22px}label{display:block;font-size:14px;font-weight:700;margin:12px 0 7px}input,textarea,select{width:100%;border:1px solid #ddd6fe;border-radius:12px;padding:11px 12px;font-size:14px;outline:none;background:#fff}
+    input:focus,textarea:focus,select:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.14)}textarea{resize:vertical;min-height:84px;line-height:1.5}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .upload-box{border:2px dashed #c4b5fd;border-radius:14px;padding:16px;text-align:center;color:#5b21b6;background:#faf5ff;cursor:pointer;line-height:1.5}.upload-box input{display:none}
+    .preview-wrap{display:none;margin-top:10px}.preview-wrap img{width:100%;max-height:260px;object-fit:contain;border:1px solid #ddd6fe;border-radius:12px;background:#fff;padding:6px}
+    .output{min-height:320px;background:#111827;color:#f9fafb;border-radius:14px;padding:16px;white-space:pre-wrap;line-height:1.7;font-size:14px;user-select:text}
+    .status{margin-top:10px;min-height:24px;font-size:14px;font-weight:700;white-space:pre-wrap}.status.success{color:#047857}.status.warn{color:#92400e}.status.error{color:#b91c1c}
+    .examples{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}.example{border:1px solid #e9d5ff;border-radius:12px;padding:11px;background:#faf5ff;cursor:pointer}.example:hover{background:#f3e8ff}
+    .example strong{display:block;margin-bottom:4px;color:#581c87;font-size:14px}.example span{font-size:12px;color:#4b5563}
+    .actions-wrap{margin-top:16px}.buttons{display:flex;flex-wrap:wrap;gap:10px}button{border:0;border-radius:999px;padding:12px 18px;font-size:15px;font-weight:800;cursor:pointer}
+    .primary{background:#7c3aed;color:#fff}.secondary{background:#f3e8ff;color:#5b21b6}.danger{background:#fee2e2;color:#991b1b}.notice{margin-top:14px;border:1px solid #fde68a;border-radius:12px;background:#fffbeb;color:#78350f;padding:10px 12px;font-size:13px;line-height:1.55}
+    @media (max-width:900px){.grid,.row,.examples{grid-template-columns:1fr}.hero h1{font-size:30px}}
   </style>
 </head>
 <body>
-  <div class="container">
-    <section class="hero">
-      <h1>AI 이미지 프롬프트 생성기</h1>
-      <p>사진을 넣고 스타일, 색상, 분위기를 선택하면<br />복사해서 바로 사용할 수 있는 이미지 프롬프트가 만들어집니다.</p>
+<div class="container">
+  <section class="hero">
+    <h1>이모티콘 프롬프트 생성기</h1>
+    <p>예시를 먼저 고르고 옵션을 다듬은 뒤, 마지막에 프롬프트를 생성/복사하세요.</p>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>1. 사진과 옵션 설정</h2>
+      <label>참고 사진 업로드 / 붙여넣기</label>
+      <label class="upload-box" for="imageInput"><input id="imageInput" type="file" accept="image/*" />클릭해서 이미지 선택<br>또는 이 페이지에서 Ctrl+V</label>
+      <div class="preview-wrap" id="previewWrap"><img id="previewImage" alt="미리보기" /></div>
+
+      <label for="subject">주제 문구</label>
+      <textarea id="subject" placeholder="예: 귀여운 한국인 캐릭터 이모티콘 세트"></textarea>
+
+      <label for="renderMode">표현 모드</label>
+      <select id="renderMode"><option value="real">실사</option><option value="animation">애니메이션</option></select>
+
+      <div class="row">
+        <div><label for="style">스타일</label>
+          <select id="style">
+            <option value="cute emoji sticker style, simple rounded face, expressive eyes, clean illustration">이모티콘 스티커</option>
+            <option value="photo-realistic studio portrait, natural skin texture, realistic facial detail">실사 스티커</option>
+            <option value="miniature collectible figurine package, blister toy packaging, oversized head, small body">피규어 패키지/장난감 박스</option>
+            <option value="warm animation film style, nostalgic memory mood, soft cinematic light">지브리/감성 애니메이션</option>
+            <option value="professional Korean ID photo transformation, preserve exact facial identity, centered face, neutral expression, tidy hair, plain light background, natural retouch, passport-style framing">증명사진 캐릭터화</option>
+            <option value="pixel art, retro 16-bit style">레트로 픽셀아트</option>
+            <option value="high-fashion editorial cover portrait, luxury beauty lighting, sharp facial detail, cinematic contrast, premium magazine cover styling, typography space at top and sides, glossy studio quality">AI 프로필 화보</option>
+            <option value="funny exaggerated expression, meme reaction face, chaotic energy">랜덤 밈 캐릭터</option>
+            <option value="miniature diorama, tiny world, cozy lighting, highly detailed small environment">미니어처 디오라마</option>
+            <option value="editorial magazine layout, typography space, clean composition, instagram post design">잡지 커버/SNS 카드</option>
+            <option value="3D kawaii character style, toy-like texture">3D 캐릭터</option>
+            <option value="minimal flat illustration, clean vector style">미니멀 벡터</option>
+          </select>
+        </div>
+        <div><label for="palette">색감</label>
+          <select id="palette">
+            <option value="pastel color palette">파스텔</option><option value="natural skin tone, neutral white balance">자연 톤</option><option value="warm beige and peach palette">웜톤</option><option value="vivid trendy palette">비비드</option><option value="monochrome palette">모노톤</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div><label for="mood">분위기</label>
+          <select id="mood"><option value="bright and cheerful">밝고 귀여움</option><option value="natural and friendly">자연스럽고 친근함</option><option value="calm and warm">차분하고 따뜻함</option><option value="playful and funny">장난스럽고 유쾌함</option></select>
+        </div>
+        <div><label for="composition">구도</label>
+          <select id="composition">
+            <option value="front-facing portrait, centered">정면 단일</option>
+            <option value="3x3 emoji sticker sheet, exactly 9 square panels, same character in every panel">9분할 이모티콘</option>
+            <option value="4x4 realistic sticker sheet, exactly 16 panels, same real person in every panel">실사 16컷 스티커</option>
+            <option value="close-up face, clean background">얼굴 클로즈업</option>
+            <option value="upper body, centered">상반신 정면</option>
+            <option value="full body, centered">전신 구도</option>
+            <option value="dynamic angle, slight 3/4 view">사선 3/4 구도</option>
+            <option value="instagram square card composition with breathing space">인스타 카드형</option>
+            <option value="poster layout with large title space">포스터형</option>
+            <option value="before-and-after split concept, left and right contrast">before/after 분할</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div><label for="emotion">감정</label>
+          <select id="emotion"><option value="happy">행복</option><option value="sad">슬픔</option><option value="angry">분노</option><option value="surprised">놀람</option><option value="embarrassed">부끄러움</option><option value="happy sad angry surprised sleepy embarrassed laughing crying confused">감정 세트(9종)</option></select>
+        </div>
+        <div><label for="quality">품질</label>
+          <select id="quality"><option value="high quality, clean line, white background">고품질</option><option value="simple sticker design, clear separated panels">스티커 최적화</option><option value="studio lighting, high resolution, clean white background">실사 스튜디오 품질</option></select>
+        </div>
+      </div>
+
+      <div class="notice">사진 참고 방식 옵션은 제거했습니다. 표현 모드와 스타일 선택으로 결과 톤을 조절하세요.</div>
     </section>
 
-    <div class="grid">
-      <section class="card">
-        <h2>1. 내가 만들고 싶은 이미지 설정</h2>
+    <section class="card">
+      <h2>2. 프롬프트 예시 선택</h2>
+      <div class="examples">
+        <div class="example" data-example="realPhoto16"><strong>실사 16컷 문구 스티커</strong><span>사진 느낌 유지 + 한국어 문구 16개</span></div>
+        <div class="example" data-example="toyPackage"><strong>피규어 패키지/장난감 박스</strong><span>큰 머리, 작은 몸, 블리스터 패키지</span></div>
+        <div class="example" data-example="ghibliMood"><strong>지브리/감성 애니메이션</strong><span>따뜻한 빛, 회상, 필름 감성</span></div>
+        <div class="example" data-example="idPhotoCharacter"><strong>증명사진 → 캐릭터화</strong><span>실제 얼굴 유지 + 캐릭터 변환</span></div>
+        <div class="example" data-example="pixel"><strong>레트로 픽셀아트</strong><span>게임 감성 프로필</span></div>
+        <div class="example" data-example="profileEditorial"><strong>AI 프로필 화보</strong><span>인스타 화보 느낌</span></div>
+        <div class="example" data-example="memeReaction"><strong>랜덤 밈 캐릭터</strong><span>과장 표정, chaotic energy</span></div>
+        <div class="example" data-example="miniDiorama"><strong>미니어처 디오라마</strong><span>tiny world, cozy lighting</span></div>
+        <div class="example" data-example="magazineCard"><strong>잡지 커버/SNS 카드</strong><span>editorial layout + typography space</span></div>
+        <div class="example" data-example="beforeAfter"><strong>before / after 변환형</strong><span>현실→애니, 학생→미래직업, 어린시절→현재</span></div>
+        <div class="example" data-example="fullBodyProfile"><strong>전신 프로필</strong><span>스튜디오 전신 인물 프로필</span></div>
+      </div>
 
-        <label>참고 사진 업로드 또는 붙여넣기</label>
-        <label class="upload-box" for="imageInput" id="pasteArea" tabindex="0">
-          <input type="file" id="imageInput" accept="image/*" />
-          📷 사진 선택하기<br />
-          또는 이 영역을 클릭한 뒤 Ctrl+V로 이미지 붙여넣기
-        </label>
-        <div class="image-preview-wrap" id="imagePreviewWrap">
-          <img id="imagePreview" alt="업로드한 참고 사진 미리보기" />
-          <div class="image-tip">이 사진은 현재 브라우저 화면에서만 미리보기로 표시됩니다. API 생성 시에는 서버로 전송되지만, 저장하지 않는 구조로 설계합니다.</div>
-        </div>
-
-        <label for="subject">이미지에 넣고 싶은 문구 또는 주제</label>
-        <textarea id="subject" placeholder="예: 나를 표현하는 창의적인 AI 학습자 캐릭터 / 오늘의 기분을 표현한 귀여운 얼굴 / 어린 시절의 따뜻한 기억"></textarea>
-
-        <div class="row">
-          <div>
-            <label for="style">이미지 스타일</label>
-            <select id="style">
-              <option value="cute emoji sticker style, simple rounded face, expressive eyes, clean character illustration">귀여운 이모티콘</option>
-              <option value="3D kawaii character style, soft toy texture, big head and small body">3D 캐릭터</option>
-              <option value="pixel art, retro 16-bit game style">픽셀아트</option>
-              <option value="warm animation film style, nostalgic and hand-painted">감성 애니메이션</option>
-              <option value="realistic film photography, natural grain">감성 필름사진</option>
-              <option value="miniature collectible figurine package, chibi figure, oversized head, small body, cute proportions, realistic product photography">피규어 패키지</option>
-              <option value="fashion magazine cover, editorial photography">잡지 화보</option>
-              <option value="minimal flat illustration, clean vector style">미니멀 일러스트</option>
-            </select>
-          </div>
-
-          <div>
-            <label for="color">색상</label>
-            <select id="color">
-              <option value="pastel color palette">파스텔톤</option>
-              <option value="warm beige and peach color palette">따뜻한 베이지톤</option>
-              <option value="blue and purple dreamy color palette">몽환적인 블루·퍼플</option>
-              <option value="vivid and trendy neon color palette">비비드 네온톤</option>
-              <option value="black and white monochrome palette">흑백톤</option>
-              <option value="soft pink and cream color palette">핑크·크림톤</option>
-              <option value="green and yellow fresh color palette">초록·노랑 산뜻한 톤</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="row">
-          <div>
-            <label for="mood">분위기</label>
-            <select id="mood">
-              <option value="bright, cheerful, friendly mood">밝고 귀여운</option>
-              <option value="calm, warm, comforting mood">따뜻하고 편안한</option>
-              <option value="nostalgic, emotional, cinematic mood">추억 어린 감성</option>
-              <option value="funny, playful, exaggerated mood">재미있고 과장된</option>
-              <option value="dreamy, magical, soft mood">몽환적이고 신비로운</option>
-              <option value="cool, stylish, trendy mood">세련되고 트렌디한</option>
-            </select>
-          </div>
-
-          <div>
-            <label for="composition">구도</label>
-            <select id="composition" onchange="syncGridOptions(); generatePrompt();">
-              <option value="front facing portrait, centered composition">정면 얼굴</option>
-              <option value="3x3 emoji sticker sheet, exactly 9 square panels, same character in every panel, front-facing face only">9분할 표정 그리드</option>
-              <option value="full body miniature figure, centered inside a clear plastic toy box, white background">피규어 전신 패키지</option>
-              <option value="square social media post composition">정사각형 SNS 카드</option>
-              <option value="poster layout with large title space">포스터형</option>
-              <option value="close-up face, clean background">얼굴 클로즈업</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="row">
-          <div>
-            <label for="emotion">표정/감정</label>
-            <select id="emotion" onchange="generatePrompt()">
-              <option value="happy, smiling expression">행복</option>
-              <option value="sad, teary expression">슬픔</option>
-              <option value="angry, frustrated expression">화남</option>
-              <option value="surprised, wide eyes expression">놀람</option>
-              <option value="sleepy, tired expression">졸림</option>
-              <option value="embarrassed, shy expression">부끄러움</option>
-              <option value="laughing, joyful expression">웃음</option>
-              <option value="confused, blank expression">멍함/당황</option>
-              <option value="happy sad angry surprised sleepy embarrassed laughing crying confused, one emotion per panel">여러 감정 세트</option>
-            </select>
-          </div>
-
-          <div>
-            <label for="quality">품질 옵션</label>
-            <select id="quality" onchange="generatePrompt()">
-              <option value="clean line, high quality, detailed, white background">깔끔한 고품질</option>
-              <option value="simple sticker design, clean white or transparent-looking background, separated panels, high quality">스티커용 단순화</option>
-              <option value="soft lighting, smooth texture, high resolution">부드러운 고해상도</option>
-              <option value="studio lighting, glossy plastic texture, clear blister packaging, high resolution">피규어 제품사진</option>
-              <option value="cinematic lighting, detailed background, high quality">영화 같은 배경</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="api-box">
-          <h3>API 설정</h3>
-          <label for="apiEndpoint">서버 API 주소</label>
-          <input id="apiEndpoint" value="/api/generate-image" placeholder="예: /api/generate-image" />
-          <div class="check-row">
-            <input type="checkbox" id="mockMode" />
-            <label for="mockMode" style="margin:0; font-weight:600;">테스트 모드 사용: 실제 API 호출 없이 미리보기 사진을 결과로 표시</label>
-          </div>
-          <div class="buttons" style="margin-top:14px;">
-            <button class="gray" type="button" onclick="testApiConnection()">API 연결 테스트</button>
-          </div>
-        </div>
-
-        <div class="buttons">
-          <button class="primary" type="button" onclick="generatePrompt()">프롬프트 만들기</button>
-          <button class="secondary" type="button" onclick="copyPrompt()">프롬프트 복사</button>
-          <button class="secondary" type="button" onclick="copyPromptAndImage()">프롬프트+사진 복사</button>
-          <button class="primary" type="button" onclick="generateImageWithApi()">GPT API로 이미지 생성</button>
-          <button class="danger" type="button" onclick="resetForm()">초기화</button>
-        </div>
-
-        <div class="notice">
-          API 키는 이 HTML에 넣지 않습니다. OpenAI API 키는 서버 환경변수에만 저장해야 합니다. 사진은 생성 요청 때 서버로 전송되며, 서버에서는 메모리 또는 임시 파일로 처리한 뒤 즉시 삭제하도록 구현해야 합니다.
-        </div>
-      </section>
-
-      <section class="card">
-        <h2>2. 완성된 프롬프트</h2>
-        <div id="promptOutput" class="prompt-box">왼쪽에서 내용을 입력하고 [프롬프트 만들기]를 누르면 여기에 결과가 표시됩니다.</div>
-        <div id="status" class="status"></div>
-
-        <div class="result-wrap" id="resultWrap">
-          <h2 style="margin-top:28px;">3. 생성된 이미지</h2>
-          <img id="resultImage" alt="GPT API로 생성된 이미지" />
-        </div>
-
-        <h2 style="margin-top:28px;">4. 예시 프롬프트 바로 넣기</h2>
-        <div class="example-list">
-          <div class="example" onclick="loadExample('emotionGrid')">
-            <strong>감정 이모티콘 9분할</strong>
-            <span>정면 얼굴, 같은 캐릭터, 여러 감정을 표현하는 3x3 그리드</span>
-          </div>
-          <div class="example" onclick="loadExample('memoryFilm')">
-            <strong>추억 필름사진</strong>
-            <span>나의 기억을 감성적인 필름사진처럼 표현</span>
-          </div>
-          <div class="example" onclick="loadExample('toyPackage')">
-            <strong>귀여운 피규어 패키지</strong>
-            <span>작은 몸, 큰 머리, 귀여운 비율의 장난감 패키지 스타일</span>
-          </div>
-          <div class="example" onclick="loadExample('pixel')">
-            <strong>픽셀아트 프로필</strong>
-            <span>레트로 게임 캐릭터처럼 표현</span>
-          </div>
-        </div>
-
-        <div class="test-box" id="testBox">
-          자체 테스트: 아직 실행 전입니다.
-        </div>
-      </section>
-    </div>
-
-    <div class="footer">3회차 수업용 · AI 이미지 프롬프트 생성 활동</div>
+      <h2 style="margin-top:18px;">3. 완성된 프롬프트</h2>
+      <div id="promptOutput" class="output">예시를 먼저 선택하고, 하단 버튼에서 [프롬프트 만들기]를 누르세요.</div>
+      <div id="status" class="status"></div>
+    </section>
   </div>
 
-  <script>
-    const output = document.getElementById('promptOutput');
-    const statusBox = document.getElementById('status');
-    const imageInput = document.getElementById('imageInput');
-    const imagePreview = document.getElementById('imagePreview');
-    const imagePreviewWrap = document.getElementById('imagePreviewWrap');
-    const pasteArea = document.getElementById('pasteArea');
-    const resultWrap = document.getElementById('resultWrap');
-    const resultImage = document.getElementById('resultImage');
-    const apiEndpoint = document.getElementById('apiEndpoint');
-    const mockMode = document.getElementById('mockMode');
-    const testBox = document.getElementById('testBox');
-    let selectedImageFile = null;
+  <section class="card actions-wrap">
+    <h2>4. 실행 버튼</h2>
+    <div class="buttons">
+      <button class="primary" type="button" id="btnGenerate">프롬프트 만들기</button>
+      <button class="secondary" type="button" id="btnCopyText">프롬프트 복사</button>
+      <button class="secondary" type="button" id="btnCopyBoth">프롬프트+이미지 복사</button>
+      <button class="danger" type="button" id="btnReset">초기화</button>
+    </div>
+  </section>
+</div>
 
-    function setStatus(message, type = '') {
-      statusBox.textContent = message;
-      statusBox.className = 'status' + (type ? ' ' + type : '');
-    }
+<script>
+const els = {
+  imageInput: document.getElementById("imageInput"), previewWrap: document.getElementById("previewWrap"), previewImage: document.getElementById("previewImage"),
+  subject: document.getElementById("subject"), renderMode: document.getElementById("renderMode"), style: document.getElementById("style"), palette: document.getElementById("palette"), mood: document.getElementById("mood"),
+  composition: document.getElementById("composition"), emotion: document.getElementById("emotion"), quality: document.getElementById("quality"), promptOutput: document.getElementById("promptOutput"), status: document.getElementById("status"),
+  btnGenerate: document.getElementById("btnGenerate"), btnCopyText: document.getElementById("btnCopyText"), btnCopyBoth: document.getElementById("btnCopyBoth"), btnReset: document.getElementById("btnReset")
+};
+let selectedImageFile = null;
 
-    function isGridSelected() {
-      return document.getElementById('composition').selectedIndex === 1;
-    }
+function setStatus(message, type="") { els.status.className = "status" + (type ? " " + type : ""); els.status.textContent = message; }
+function isEmojiGridMode(){ return els.composition.selectedIndex===1; }
+function isRealPhoto16Mode(){ return els.composition.selectedIndex===2; }
 
-    function showImagePreview(file) {
-      if (!file || !file.type.startsWith('image/')) {
-        setStatus('이미지 파일만 업로드할 수 있습니다.', 'error');
-        return;
-      }
+function enforcePresetOptions(){
+  if (isRealPhoto16Mode()) {
+    els.renderMode.value = "real";
+    els.style.value = "photo-realistic studio portrait, natural skin texture, realistic facial detail";
+    els.palette.value = "natural skin tone, neutral white balance";
+    els.mood.value = "natural and friendly";
+    els.quality.value = "studio lighting, high resolution, clean white background";
+  }
+}
 
-      selectedImageFile = file;
+function buildPrompt(){
+  enforcePresetOptions();
+  const subject = (els.subject.value || "cute Korean emoji character").trim();
+  const hasPhoto = !!selectedImageFile;
+  const modeInstruction = els.renderMode.value === "real" ? "Render mode: photo-realistic." : "Render mode: animation illustration.";
+  const photoInstruction = hasPhoto
+    ? "IMPORTANT: Use the pasted reference image as the primary identity reference. Preserve face shape, hairstyle, key facial features, and overall vibe consistently."
+    : "Create one consistent original character identity.";
 
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        imagePreview.src = event.target.result;
-        imagePreviewWrap.style.display = 'block';
-        setStatus('✅ 참고 사진이 추가되었습니다.', 'success');
-        generatePrompt();
-      };
-      reader.readAsDataURL(file);
-    }
+  if (isRealPhoto16Mode()) {
+    const labels = ["최고!","고마워요","미안해요","사랑해요","헉","깜짝이야","빵터짐","축하해요","멋져!","힘내세요","안녕","OK","흥","ㅋㅋㅋ","화이팅!","냠냠"];
+    return [
+      modeInstruction,
+      photoInstruction,
+      "Generate a 4x4 sticker sheet (exactly 16 panels) with the same real person in every panel.",
+      "Style: realistic studio photo sticker, clean white background, soft even lighting.",
+      "Upper-body framing in most panels, varied facial expressions and hand gestures.",
+      "Add bold black Korean text under each panel, one phrase per panel, exactly these:",
+      labels.join(", "),
+      "Layout rules: 4 columns x 4 rows, evenly spaced, one person only, no extra people, no watermark, no logo."
+    ].join(" ");
+  }
 
-    imageInput.addEventListener('change', function(event) {
-      showImagePreview(event.target.files[0]);
-    });
+  const parts = [
+    modeInstruction,
+    photoInstruction,
+    subject,
+    els.style.value,
+    els.palette.value,
+    els.mood.value,
+    els.composition.value,
+    els.emotion.value,
+    els.quality.value
+  ];
 
-    pasteArea.addEventListener('click', function() {
-      pasteArea.focus();
-    });
+  if (isEmojiGridMode()) {
+    parts.push("exactly 9 square panels","same character in every panel","one emotion per panel","emotions: happy, sad, angry, surprised, sleepy, embarrassed, laughing, crying, confused");
+  }
 
-    document.addEventListener('paste', function(event) {
-      const items = event.clipboardData && event.clipboardData.items;
-      if (!items) return;
+  parts.push("no text, no watermark, no logo");
+  return parts.filter(Boolean).join(", ");
+}
 
-      for (const item of items) {
-        if (item.type.indexOf('image') !== -1) {
-          showImagePreview(item.getAsFile());
-          event.preventDefault();
-          break;
-        }
-      }
-    });
+function generatePrompt(){ const prompt = buildPrompt(); els.promptOutput.textContent = prompt; return prompt; }
 
-    ['subject', 'style', 'color', 'mood', 'apiEndpoint'].forEach(function(id) {
-      document.getElementById(id).addEventListener('input', function() {
-        if (id !== 'apiEndpoint') generatePrompt();
-      });
-    });
+function showImage(file){
+  if(!file || !file.type.startsWith("image/")){ setStatus("이미지 파일만 업로드할 수 있습니다.","error"); return; }
+  selectedImageFile=file;
+  const reader=new FileReader();
+  reader.onload=(e)=>{ els.previewImage.src=e.target.result; els.previewWrap.style.display="block"; setStatus("참고 사진이 등록되었습니다.","success"); };
+  reader.readAsDataURL(file);
+}
 
-    function syncGridOptions() {
-      if (isGridSelected()) {
-        document.getElementById('style').value = 'cute emoji sticker style, simple rounded face, expressive eyes, clean character illustration';
-        document.getElementById('emotion').selectedIndex = 8;
-        document.getElementById('quality').value = 'simple sticker design, clean white or transparent-looking background, separated panels, high quality';
-      }
-    }
+async function copyText(text){
+  if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(text); return true; }
+  const t=document.createElement("textarea"); t.value=text; t.style.position="fixed"; t.style.left="-9999px"; document.body.appendChild(t); t.select(); const ok=document.execCommand("copy"); document.body.removeChild(t); return ok;
+}
 
-    function buildPrompt() {
-      syncGridOptions();
+async function copyPromptOnly(){ const prompt=generatePrompt(); await copyText(prompt); setStatus("프롬프트를 복사했습니다.","success"); }
 
-      const subject = document.getElementById('subject').value.trim() || 'cute Korean emoji character';
-      const style = document.getElementById('style').value;
-      const color = document.getElementById('color').value;
-      const mood = document.getElementById('mood').value;
-      const composition = document.getElementById('composition').value;
-      const emotion = document.getElementById('emotion').value;
-      const quality = document.getElementById('quality').value;
-      const hasReferenceImage = selectedImageFile !== null;
+async function copyPromptAndImage(){
+  const prompt=generatePrompt();
+  if(!selectedImageFile || !els.previewImage.src){ await copyPromptOnly(); setStatus("사진이 없어 프롬프트만 복사했습니다.","warn"); return; }
+  try{
+    if(!(navigator.clipboard && window.ClipboardItem && window.isSecureContext)) throw new Error("Clipboard API not available");
+    const bitmap=await createImageBitmap(selectedImageFile); const canvas=document.createElement("canvas"); canvas.width=bitmap.width; canvas.height=bitmap.height; const ctx=canvas.getContext("2d"); ctx.drawImage(bitmap,0,0);
+    const pngBlob=await new Promise((resolve)=>canvas.toBlob(resolve,"image/png")); if(!pngBlob) throw new Error("Failed to encode image");
+    const dataUrl=await new Promise((resolve)=>{const r=new FileReader(); r.onload=()=>resolve(r.result); r.readAsDataURL(pngBlob);});
+    const safePrompt=prompt.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+    const htmlPayload="<div><p style=\"white-space:pre-wrap;margin:0 0 8px 0;\">"+safePrompt+"</p><img src=\""+dataUrl+"\" alt=\"reference\" /></div>";
+    await navigator.clipboard.write([new ClipboardItem({"text/plain":new Blob([prompt],{type:"text/plain"}),"text/html":new Blob([htmlPayload],{type:"text/html"}),"image/png":pngBlob})]);
+    setStatus("프롬프트+사진 복사 완료. 이미지 붙여넣기를 지원하는 입력창에서 Ctrl+V 해보세요.","success");
+  }catch{ await copyPromptOnly(); setStatus("브라우저/대상 입력창 제한으로 사진 동시 복사가 안 되어 프롬프트만 복사했습니다.","warn"); }
+}
 
-      const referenceInstruction = hasReferenceImage
-        ? 'Use the uploaded reference photo as the main identity reference. Preserve hairstyle, face shape, facial features, and overall impression.'
-        : 'Create a consistent original character.';
+function resetForm(){
+  els.subject.value=""; els.renderMode.selectedIndex=0; els.style.selectedIndex=0; els.palette.selectedIndex=0; els.mood.selectedIndex=0; els.composition.selectedIndex=0; els.emotion.selectedIndex=0; els.quality.selectedIndex=0;
+  els.imageInput.value=""; selectedImageFile=null; els.previewImage.removeAttribute("src"); els.previewWrap.style.display="none";
+  els.promptOutput.textContent="예시를 먼저 선택하고, 하단 버튼에서 [프롬프트 만들기]를 누르세요."; setStatus("");
+}
 
-      const promptParts = [referenceInstruction];
+function loadExample(type){
+  const map = {
+    realPhoto16: {subject:"내 사진 기반 실사 한국어 문구 스티커 16종", renderMode:"real", style:"photo-realistic studio portrait, natural skin texture, realistic facial detail", palette:"natural skin tone, neutral white balance", mood:"natural and friendly", composition:2, emotion:"happy", quality:"studio lighting, high resolution, clean white background"},
+    toyPackage: {subject:"큰 머리 작은 몸 블리스터 장난감 패키지", renderMode:"animation", style:"miniature collectible figurine package, blister toy packaging, oversized head, small body", palette:"vivid trendy palette", mood:"playful and funny", composition:0, emotion:"happy", quality:"studio lighting, high resolution, clean white background"},
+    ghibliMood: {subject:"따뜻한 회상 느낌의 감성 장면", renderMode:"animation", style:"warm animation film style, nostalgic memory mood, soft cinematic light", palette:"warm beige and peach palette", mood:"calm and warm", composition:3, emotion:"happy", quality:"high quality, clean line, white background"},
+    idPhotoCharacter: {subject:"증명사진 느낌 얼굴을 유지한 캐릭터 프로필", renderMode:"animation", style:"professional Korean ID photo transformation, preserve exact facial identity, centered face, neutral expression, tidy hair, plain light background, natural retouch, passport-style framing", palette:"natural skin tone, neutral white balance", mood:"natural and friendly", composition:0, emotion:"happy", quality:"high quality, clean line, white background"},
+    pixel: {subject:"프로필용 레트로 픽셀 캐릭터", renderMode:"animation", style:"pixel art, retro 16-bit style", palette:"monochrome palette", mood:"playful and funny", composition:0, emotion:"surprised", quality:"high quality, clean line, white background"},
+    profileEditorial: {subject:"AI 프로필 화보 스타일 인물 컷", renderMode:"real", style:"high-fashion editorial cover portrait, luxury beauty lighting, sharp facial detail, cinematic contrast, premium magazine cover styling, typography space at top and sides, glossy studio quality", palette:"natural skin tone, neutral white balance", mood:"natural and friendly", composition:7, emotion:"happy", quality:"studio lighting, high resolution, clean white background"},
+    memeReaction: {subject:"숏폼 밈 반응 캐릭터", renderMode:"animation", style:"funny exaggerated expression, meme reaction face, chaotic energy", palette:"vivid trendy palette", mood:"playful and funny", composition:0, emotion:"surprised", quality:"simple sticker design, clear separated panels"},
+    miniDiorama: {subject:"miniature diorama, tiny world, cozy lighting, highly detailed small environment", renderMode:"real", style:"miniature diorama, tiny world, cozy lighting, highly detailed small environment", palette:"warm beige and peach palette", mood:"calm and warm", composition:5, emotion:"happy", quality:"studio lighting, high resolution, clean white background"},
+    magazineCard: {subject:"editorial magazine layout with typography space for instagram", renderMode:"real", style:"editorial magazine layout, typography space, clean composition, instagram post design", palette:"monochrome palette", mood:"natural and friendly", composition:7, emotion:"happy", quality:"studio lighting, high resolution, clean white background"},
+    beforeAfter: {subject:"before and after transformation: 현실→애니, 학생→미래 직업, 어린 시절→현재", renderMode:"animation", style:"before-and-after transformation storyboard", palette:"pastel color palette", mood:"natural and friendly", composition:9, emotion:"surprised", quality:"high quality, clean line, white background"},
+    fullBodyProfile: {subject:"전신 비즈니스 프로필 스튜디오 촬영", renderMode:"real", style:"full-body professional studio portrait, natural posture, clean background, smart styling", palette:"natural skin tone, neutral white balance", mood:"natural and friendly", composition:5, emotion:"happy", quality:"studio lighting, high resolution, clean white background"}
+  };
+  const p = map[type]; if(!p) return;
+  els.subject.value=p.subject; els.renderMode.value=p.renderMode; els.style.value=p.style; els.palette.value=p.palette; els.mood.value=p.mood; els.composition.selectedIndex=p.composition; els.emotion.value=p.emotion; els.quality.value=p.quality;
+  setStatus("예시를 적용했습니다. 하단에서 프롬프트 만들기를 누르세요.","success");
+}
 
-      if (isGridSelected()) {
-        promptParts.push(
-          hasReferenceImage ? 'cute Korean emoji character based on the uploaded reference photo' : 'cute Korean emoji character with a consistent original identity',
-          style,
-          color,
-          mood,
-          quality,
-          '3x3 emoji sticker sheet',
-          'exactly 9 square panels',
-          'same character in every panel',
-          'front-facing face only',
-          'different emotions in each panel',
-          'happy sad angry surprised sleepy embarrassed laughing crying confused',
-          'white clean background',
-          'cute rounded face',
-          'big expressive eyes',
-          'no text',
-          'no watermark',
-          'no logo'
-        );
-      } else {
-        promptParts.push(
-          subject,
-          style,
-          color,
-          mood,
-          composition,
-          emotion,
-          quality,
-          'cute rounded face',
-          'big expressive eyes',
-          'no text',
-          'no watermark',
-          'no logo'
-        );
-      }
-
-      return promptParts.filter(Boolean).join(', ');
-    }
-
-    function generatePrompt() {
-      output.textContent = buildPrompt();
-      if (!statusBox.textContent.includes('참고 사진')) setStatus('', '');
-    }
-
-    async function copyText(text) {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
-        return true;
-      }
-
-      const tempTextArea = document.createElement('textarea');
-      tempTextArea.value = text;
-      tempTextArea.setAttribute('readonly', '');
-      tempTextArea.style.position = 'fixed';
-      tempTextArea.style.top = '-9999px';
-      tempTextArea.style.left = '-9999px';
-      document.body.appendChild(tempTextArea);
-      tempTextArea.focus();
-      tempTextArea.select();
-      const successful = document.execCommand('copy');
-      document.body.removeChild(tempTextArea);
-      return successful;
-    }
-
-    async function copyPrompt() {
-      generatePrompt();
-      const text = output.textContent.trim();
-
-      if (!text || text.includes('왼쪽에서')) {
-        setStatus('먼저 프롬프트를 만들어 주세요.', 'warn');
-        return;
-      }
-
-      try {
-        const successful = await copyText(text);
-        setStatus(successful ? '✅ 프롬프트가 복사되었습니다.' : '복사가 안 되면 검은 박스의 문장을 직접 드래그해서 복사해 주세요.', successful ? 'success' : 'warn');
-      } catch (error) {
-        setStatus('복사가 안 되면 검은 박스의 문장을 직접 드래그해서 복사해 주세요.', 'warn');
-      }
-    }
-
-    async function copyPromptAndImage() {
-      generatePrompt();
-      const text = output.textContent.trim();
-
-      if (!selectedImageFile || !imagePreview.src) {
-        await copyPrompt();
-        setStatus('⚠️ 사진이 없어서 프롬프트만 복사했습니다. 사진을 먼저 업로드하거나 붙여넣어 주세요.', 'warn');
-        return;
-      }
-
-      try {
-        const imageBlob = await fetch(imagePreview.src).then(response => response.blob());
-        if (navigator.clipboard && window.ClipboardItem && window.isSecureContext) {
-          await navigator.clipboard.write([
-            new ClipboardItem({
-              'text/plain': new Blob([text], { type: 'text/plain' }),
-              [imageBlob.type || 'image/png']: imageBlob
-            })
-          ]);
-          setStatus('✅ 프롬프트와 사진이 함께 복사되었습니다. 붙여넣기할 사이트에서 Ctrl+V를 눌러 보세요.', 'success');
-          return;
-        }
-      } catch (error) {}
-
-      await copyPrompt();
-      setStatus('⚠️ 이 브라우저 또는 사이트에서는 사진까지 함께 복사되지 않을 수 있습니다. 프롬프트만 복사했습니다.', 'warn');
-    }
-
-    function setLoading(isLoading) {
-      document.body.classList.toggle('loading', isLoading);
-      document.querySelectorAll('button').forEach(function(button) {
-        button.disabled = isLoading;
-      });
-    }
-
-    function normalizeApiImageResponse(data) {
-      if (!data || typeof data !== 'object') return null;
-      if (typeof data.imageBase64 === 'string') return 'data:image/png;base64,' + data.imageBase64;
-      if (typeof data.b64_json === 'string') return 'data:image/png;base64,' + data.b64_json;
-      if (typeof data.imageUrl === 'string') return data.imageUrl;
-      if (typeof data.url === 'string') return data.url;
-      return null;
-    }
-
-    async function readErrorMessage(response) {
-      try {
-        const contentType = response.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const data = await response.json();
-          return data.error || data.message || JSON.stringify(data);
-        }
-        return await response.text();
-      } catch (error) {
-        return '';
-      }
-    }
-
-    async function testApiConnection() {
-      const endpoint = apiEndpoint.value.trim();
-      if (!endpoint) {
-        setStatus('API 주소를 입력해 주세요.', 'warn');
-        return;
-      }
-
-      if (mockMode.checked) {
-        setStatus('✅ 테스트 모드가 켜져 있습니다. 실제 API 연결은 건너뜁니다.', 'success');
-        return;
-      }
-
-      setLoading(true);
-      setStatus('API 연결을 확인하는 중입니다...');
-
-      try {
-        const response = await fetch(endpoint, { method: 'OPTIONS' });
-        if (response.ok || response.status === 204 || response.status === 405) {
-          setStatus('✅ API 주소가 응답했습니다. 서버 구현과 키 설정을 확인한 뒤 이미지 생성을 실행하세요.', 'success');
-        } else {
-          setStatus('⚠️ API 주소는 응답했지만 상태 코드가 정상 범위가 아닙니다: HTTP ' + response.status, 'warn');
-        }
-      } catch (error) {
-        setStatus('❌ API 서버에 연결할 수 없습니다. HTML만 실행 중이거나, 서버가 실행되지 않았거나, 주소가 다릅니다.\n현재 주소: ' + endpoint, 'error');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    async function generateImageWithApi() {
-      generatePrompt();
-
-      const prompt = output.textContent.trim();
-      const file = selectedImageFile;
-      const endpoint = apiEndpoint.value.trim();
-
-      if (!file) {
-        setStatus('사진을 먼저 업로드해 주세요. 실제 사진 반영은 이미지 파일이 있어야 가능합니다.', 'warn');
-        return;
-      }
-
-      if (mockMode.checked) {
-        resultImage.src = imagePreview.src;
-        resultWrap.style.display = 'block';
-        setStatus('✅ 테스트 모드: API 호출 없이 업로드한 사진을 결과 영역에 표시했습니다.', 'success');
-        return;
-      }
-
-      if (!endpoint) {
-        setStatus('API 주소를 입력해 주세요.', 'warn');
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append('prompt', prompt);
-      formData.append('image', file, file.name || 'reference-image.png');
-
-      setStatus('이미지를 생성하는 중입니다...');
-      setLoading(true);
-
-      try {
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          body: formData
-        });
-
-        if (!response.ok) {
-          const detail = await readErrorMessage(response);
-          throw new Error('HTTP ' + response.status + (detail ? ': ' + detail : ''));
-        }
-
-        const contentType = response.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
-          throw new Error('서버 응답이 JSON이 아닙니다. content-type=' + contentType);
-        }
-
-        const data = await response.json();
-        const imageSrc = normalizeApiImageResponse(data);
-
-        if (!imageSrc) {
-          throw new Error('서버 응답에서 imageBase64, b64_json, imageUrl, url 중 하나를 찾지 못했습니다.');
-        }
-
-        resultImage.src = imageSrc;
-        resultWrap.style.display = 'block';
-        setStatus('✅ 이미지가 생성되었습니다. 사진은 프론트엔드에 저장되지 않습니다. 서버도 저장하지 않도록 구현해야 합니다.', 'success');
-      } catch (error) {
-        console.error(error);
-        setStatus(
-          '❌ 이미지 생성 실패\n' +
-          '원인: ' + error.message + '\n\n' +
-          '확인할 것:\n' +
-          '1) /api/generate-image 서버가 실제로 실행 중인지 확인\n' +
-          '2) 서버에 OPENAI_API_KEY 환경변수가 설정되어 있는지 확인\n' +
-          '3) 서버가 { imageBase64: "..." } 형태의 JSON을 반환하는지 확인\n' +
-          '4) 로컬 HTML 파일만 열어둔 상태라면 API 호출은 작동하지 않음',
-          'error'
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    function resetForm() {
-      document.getElementById('subject').value = '';
-      document.getElementById('style').selectedIndex = 0;
-      document.getElementById('color').selectedIndex = 0;
-      document.getElementById('mood').selectedIndex = 0;
-      document.getElementById('composition').selectedIndex = 0;
-      document.getElementById('emotion').selectedIndex = 0;
-      document.getElementById('quality').selectedIndex = 0;
-      imageInput.value = '';
-      selectedImageFile = null;
-      imagePreview.removeAttribute('src');
-      imagePreviewWrap.style.display = 'none';
-      resultImage.removeAttribute('src');
-      resultWrap.style.display = 'none';
-      output.textContent = '왼쪽에서 내용을 입력하고 [프롬프트 만들기]를 누르면 여기에 결과가 표시됩니다.';
-      setStatus('', '');
-    }
-
-    function loadExample(type) {
-      const previousImageFile = selectedImageFile;
-      const previousImageSrc = imagePreview.src;
-      const previousImageVisible = imagePreviewWrap.style.display === 'block';
-
-      if (type === 'emotionGrid') {
-        document.getElementById('subject').value = 'a cute Korean character face expressing my daily emotions';
-        document.getElementById('style').value = 'cute emoji sticker style, simple rounded face, expressive eyes, clean character illustration';
-        document.getElementById('color').value = 'pastel color palette';
-        document.getElementById('mood').value = 'bright, cheerful, friendly mood';
-        document.getElementById('composition').selectedIndex = 1;
-        document.getElementById('emotion').selectedIndex = 8;
-        document.getElementById('quality').value = 'simple sticker design, clean white or transparent-looking background, separated panels, high quality';
-      }
-
-      if (type === 'memoryFilm') {
-        document.getElementById('subject').value = 'a nostalgic memory from my childhood on a quiet afternoon';
-        document.getElementById('style').value = 'realistic film photography, natural grain';
-        document.getElementById('color').value = 'warm beige and peach color palette';
-        document.getElementById('mood').value = 'nostalgic, emotional, cinematic mood';
-        document.getElementById('composition').selectedIndex = 3;
-        document.getElementById('emotion').selectedIndex = 0;
-        document.getElementById('quality').value = 'cinematic lighting, detailed background, high quality';
-      }
-
-      if (type === 'toyPackage') {
-        document.getElementById('subject').value = 'a character that represents me as a creative AI learner';
-        document.getElementById('style').value = 'miniature collectible figurine package, chibi figure, oversized head, small body, cute proportions, realistic product photography';
-        document.getElementById('color').value = 'vivid and trendy neon color palette';
-        document.getElementById('mood').value = 'cool, stylish, trendy mood';
-        document.getElementById('composition').selectedIndex = 2;
-        document.getElementById('emotion').selectedIndex = 0;
-        document.getElementById('quality').value = 'studio lighting, glossy plastic texture, clear blister packaging, high resolution';
-      }
-
-      if (type === 'pixel') {
-        document.getElementById('subject').value = 'a profile character inspired by my personality';
-        document.getElementById('style').value = 'pixel art, retro 16-bit game style';
-        document.getElementById('color').value = 'blue and purple dreamy color palette';
-        document.getElementById('mood').value = 'funny, playful, exaggerated mood';
-        document.getElementById('composition').selectedIndex = 0;
-        document.getElementById('emotion').selectedIndex = 6;
-        document.getElementById('quality').selectedIndex = 0;
-      }
-
-      selectedImageFile = previousImageFile;
-      if (previousImageFile && previousImageSrc && previousImageVisible) {
-        imagePreview.src = previousImageSrc;
-        imagePreviewWrap.style.display = 'block';
-      }
-
-      generatePrompt();
-    }
-
-    function runSelfTests() {
-      const results = [];
-      const assert = function(name, condition) {
-        results.push((condition ? '✅ ' : '❌ ') + name);
-      };
-
-      const originalComposition = document.getElementById('composition').selectedIndex;
-      const originalEmotion = document.getElementById('emotion').selectedIndex;
-      const originalSubject = document.getElementById('subject').value;
-      const originalFile = selectedImageFile;
-      const originalSrc = imagePreview.src;
-      const originalPreviewDisplay = imagePreviewWrap.style.display;
-
-      document.getElementById('composition').selectedIndex = 1;
-      selectedImageFile = null;
-      const gridPrompt = buildPrompt();
-      assert('9분할 선택 시 3x3 문구 포함', gridPrompt.includes('3x3 emoji sticker sheet'));
-      assert('9분할 선택 시 여러 감정 문구 포함', gridPrompt.includes('happy sad angry surprised'));
-      assert('사진이 없으면 원본 사진 참조 문구 미포함', !gridPrompt.includes('uploaded reference photo'));
-
-      selectedImageFile = new File(['test'], 'test.png', { type: 'image/png' });
-      const photoPrompt = buildPrompt();
-      assert('사진이 있으면 reference photo 문구 포함', photoPrompt.includes('uploaded reference photo'));
-
-      imagePreview.src = 'data:image/png;base64,test';
-      imagePreviewWrap.style.display = 'block';
-      loadExample('toyPackage');
-      assert('예시 클릭 후 사진 파일 상태 유지', selectedImageFile !== null);
-      assert('예시 클릭 후 사진 미리보기 유지', imagePreviewWrap.style.display === 'block');
-
-      document.getElementById('composition').selectedIndex = originalComposition;
-      document.getElementById('emotion').selectedIndex = originalEmotion;
-      document.getElementById('subject').value = originalSubject;
-      selectedImageFile = originalFile;
-      if (originalSrc) imagePreview.src = originalSrc;
-      else imagePreview.removeAttribute('src');
-      imagePreviewWrap.style.display = originalPreviewDisplay;
-      generatePrompt();
-
-      testBox.textContent = '자체 테스트 결과\n' + results.join('\n');
-      console.log('[Prompt Generator Self Tests]\n' + results.join('\n'));
-    }
-
-    generatePrompt();
-    runSelfTests();
-  </script>
+els.imageInput.addEventListener("change",(e)=>showImage(e.target.files[0]));
+document.addEventListener("paste",(e)=>{const items=e.clipboardData?.items||[];for(const item of items){if(item.type.startsWith("image/")){showImage(item.getAsFile());e.preventDefault();break;}}});
+els.btnGenerate.addEventListener("click",generatePrompt); els.btnCopyText.addEventListener("click",copyPromptOnly); els.btnCopyBoth.addEventListener("click",copyPromptAndImage); els.btnReset.addEventListener("click",resetForm); els.renderMode.addEventListener("change",generatePrompt);
+document.querySelectorAll(".example").forEach((node)=>node.addEventListener("click",()=>loadExample(node.dataset.example)));
+generatePrompt();
+</script>
 </body>
 </html>
