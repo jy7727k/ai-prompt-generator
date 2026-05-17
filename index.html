@@ -98,7 +98,6 @@
         </div>
       </div>
 
-      <div class="notice">사진 참고 방식 옵션은 제거했습니다. 표현 모드와 스타일 선택으로 결과 톤을 조절하세요.</div>
     </section>
 
     <section class="card">
@@ -233,13 +232,8 @@ async function copyPromptAndImage(){
     const safePrompt=prompt.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
     const htmlPayload="<div><p style=\"white-space:pre-wrap;margin:0 0 8px 0;\">"+safePrompt+"</p><img src=\""+dataUrl+"\" alt=\"reference\" /></div>";
     await navigator.clipboard.write([new ClipboardItem({"text/plain":new Blob([prompt],{type:"text/plain"}),"text/html":new Blob([htmlPayload],{type:"text/html"}),"image/png":pngBlob})]);
-    // Gemini 호환성을 높이기 위한 2단계 보강: 복합 복사 직후 텍스트를 다시 복사
-    // 일부 입력창은 이미지 타입만 우선 소비하므로 텍스트를 마지막에 한 번 더 보강한다.
-    setTimeout(async ()=>{
-      try { await copyText(prompt); } catch {}
-    }, 280);
     els.geminiHelp.style.display="block";
-    setStatus("복사 완료: 이미지+프롬프트를 함께 복사했고, Gemini 호환용으로 텍스트도 자동 보강했습니다.","success");
+    setStatus("복사 완료: 이미지+프롬프트를 함께 복사했습니다.","success");
   }catch{
     els.geminiHelp.style.display="block";
     await copyPromptOnly();
